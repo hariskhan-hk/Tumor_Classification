@@ -1,15 +1,15 @@
-# 🔬 Breast Ultrasound Tumor Classification
+#  Breast Ultrasound Tumor Classification
 
 <div align="center">
   <img src="https://img.shields.io/badge/TensorFlow-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white" alt="TensorFlow">
   <img src="https://img.shields.io/badge/Keras-D00000?style=for-the-badge&logo=keras&logoColor=white" alt="Keras">
   <img src="https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Streamlit">
   <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/Deep_Learning-007ACC?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0yMCAxMy4xOHYtLjA0YzAtLjI5LjEzLS42NyA0LTIuNVYxMGMtMi0xLjg0LTMuODctMi44NC03LjAzLTIuOTQtMy44Mi0uMTMtNy41MiAyLjE2LTguOTcgNC44NS0uMzcuNjgtLjU4IDEuNDMtLjU4IDIuMi4wMSAxLjkzIDEuMTYgMy42MyAyLjk1IDQuNDcuMi4xLjQyLjE2LjY1LjE2LjE1IDAgLjI5LS4wNS40My0uMTUuNjktLjQ3LjQyLTEuNDMuNDItMS40M2wtLjAxLS4wMWMtMS4xLS41My0xLjgzLTEuNjEtMS44My0yLjg1IDAtLjc2LjI3LTEuNDcuNzgtMi4wNCAxLjE0LTEuMjcgMy4xMi0xLjkxIDUuMDktMS45MXYyLjYzYzAgLjEzLjA2LjI1LjE1LjMzLjA5LjA5LjIxLjE0LjM0LjE0LjI4IDAgLjUtLjIyLjUtLjVWOS41YzEuNzQgMCAzLjQxLjU1IDQuNS44NS42OS4yLjg3LjMzIDEuMjUuODMuMi4yMi41Ni43Mi41NiAxLjAweiIvPjwvc3ZnPg==" alt="Deep Learning">
+  <img src="https://img.shields.io/badge/Deep_Learning-007ACC?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0yMCAxMy4xOHYtLjA0YzAtLjI5LjEzLS42NyA0LTIuNVYxMGMtMi0xLjg0LTMuODctMi44NC03LjAzLTIuOTQtMy44Mi0uMTMtNy41MiAyLjE2LTguOTcgNC44NS0uMzcuNjgtLjU4IDEuNDMtLjU4IDIuMi4wMSAxLjkzIDEuMTYgMy42MyAyLjk1IDQuNDcuMi4xLjQyLjE2LjY1LjE2LjE1IDAgLjI5LS4wNS40My0uMTUuNjktLjQ3LjQyLTEuNDMuNDItMS40M2wtLjAxLS4wMWMtMS4xLS41My0xLjgzLTEuNjEtMS44My0yLjg1IDAtLjc2LjI3LTEuNDcuNzgtMi4wNCAxLjE0LTEuMjcgMy4xMi0xLjkwIDUuMDktMS45MXYyLjYzYzAgLjEzLjA2LjI1LjE1LjMzLjA5LjA5LjIxLjE0LjM0LjE0LjI4IDAgLjUtLjIyLjUtLjVWOS41YzEuNzQgMCAzLjQxLjU1IDQuNS44NS42OS4yLjg3LjMzIDEuMjUuODMuMi4yMi41Ni43Mi41NiAxLjAweiIvPjwvc3ZnPg==" alt="Deep Learning">
 </div>
 
 
-## 📋 Overview
+##  Overview
 
 This deep learning-based image classification project focuses on classifying breast ultrasound images into three categories:
 
@@ -19,7 +19,7 @@ This deep learning-based image classification project focuses on classifying bre
 
 The application uses advanced convolutional neural networks (CNNs) with transfer learning from pre-trained models to provide accurate classifications that can assist medical professionals in early diagnosis of breast cancer.
 
-## 🧠 Model Architecture
+##  Model Architecture
 
 The classification model leverages a DenseNet121 architecture pre-trained on ImageNet as a feature extractor, with custom fully connected layers for classification:
 
@@ -31,7 +31,7 @@ Performance metrics:
 - Training Accuracy: 99.36%
 - Validation Accuracy: 88.19%
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 
@@ -59,17 +59,25 @@ Performance metrics:
    pip install -r requirements.txt
    ```
 
-4. Download the pre-trained model:
-   [Download Model](https://drive.google.com/file/d/12VDSpKWK7em7O3-HTx6qWxw5awQUHlIs/view?usp=sharing)
+4. Download the pre-trained model from Hugging Face Hub:
+   You can download the `model.keras` file directly from the repository:
+   [Download Model from Hugging Face Hub](https://huggingface.co/chaoder/tumor-classifier/blob/main/model.keras) 
    
-   Place the downloaded model in the `./model/` directory with the filename `model.keras`.
+   Alternatively, if you have `huggingface-hub` installed (`pip install huggingface-hub`), you can download it programmatically:
+   ```python
+   from huggingface_hub import hf_hub_download
+   
+   hf_hub_download(repo_id="chaoder/tumor-classifier", filename="model.keras", local_dir="./model", local_dir_use_symlinks=False)
+   ```
+   
+   Ensure the downloaded model is placed in the `./model/` directory with the filename `model.keras`.
 
 5. Run the Streamlit app:
    ```bash
    streamlit run app.py
    ```
 
-## 📊 Dataset
+##  Dataset
 
 The project uses the Breast Ultrasound Images Dataset (BUSI), containing:
 - 437 benign samples
@@ -78,26 +86,26 @@ The project uses the Breast Ultrasound Images Dataset (BUSI), containing:
 
 Each image is labeled as benign, malignant, or normal, and includes corresponding mask files for the regions of interest.
 
-## 📈 Training Process
+##  Training Process
 
 The model was trained using transfer learning with the following steps:
 1. Feature extraction using DenseNet121 pre-trained on ImageNet
 2. Addition of custom fully connected layers for classification
 3. Training for 20 epochs with Adam optimizer and categorical cross-entropy loss
-4. Data augmentation to improve generalization
+4. Data augmentation (rescaling) applied via ImageDataGenerator
 
-## 🔧 Usage
+##  Usage
 
 1. Launch the Streamlit app
 2. Upload a breast ultrasound image or select a sample image
 3. The app will display the classification result with confidence scores
 4. Review additional information about the predicted class
 
-## ⚠️ Disclaimer
+##  Disclaimer
 
 This application is designed for research and educational purposes only. It should not be used as a substitute for professional medical advice, diagnosis, or treatment. Always consult with a qualified healthcare provider for medical concerns.
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - The BUSI dataset creators
 - TensorFlow and Keras development teams
