@@ -41,6 +41,10 @@ ipython_config.py
 # Model files and weights (optional - keep these commented if you want to include models in your repo)
 model/*.keras
 model/weights/*.h5
+model_minimal_augment/*.keras
+model_minimal_augment/weights/*.h5
+model_augment/*.keras
+model_augment/weights/*.h5
 
 # Dataset (large files)
 # Uncomment if you don't want to track the dataset
@@ -114,3 +118,6 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+
+# Python files
+training_new.py

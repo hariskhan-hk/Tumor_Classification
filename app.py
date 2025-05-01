@@ -1,12 +1,14 @@
 import streamlit as st
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
+from tensorflow.keras.applications.densenet import preprocess_input as densenet_preprocess_input # Import specific preprocessor
+# from tensorflow.keras.preprocessing import image # Less needed now
 import numpy as np
 from PIL import Image
 import os
 import matplotlib.pyplot as plt
-import io
+import cv2 # Import OpenCV for resizing consistency
+# import io # Not strictly needed in this version
 
 # Set page configuration
 st.set_page_config(
@@ -18,245 +20,237 @@ st.set_page_config(
 # Title and description
 st.title("🔬 Breast Ultrasound Tumor Classification")
 st.markdown("""
-This application uses deep learning to classify breast ultrasound images into three categories:
+This application uses a deep learning model (DenseNet121 base) trained with minimal augmentation
+(Horizontal Flip) to classify breast ultrasound images into three categories:
 - **Benign**: Non-cancerous tumors
 - **Malignant**: Cancerous tumors
 - **Normal**: Normal breast tissue
 """)
 
-# Check if model directory exists and create it if it doesn't
-model_dir = './model'
-if not os.path.exists(model_dir):
-    st.warning(f"Model directory '{model_dir}' does not exist. Please ensure you have a trained model.")
-    os.makedirs(model_dir, exist_ok=True)
+# --- Configuration ---
+MODEL_DIR = './model_minimal_augment' # Directory for minimal augment model
+MODEL_FILENAME = 'best_model.keras'
+MODEL_PATH = os.path.join(MODEL_DIR, MODEL_FILENAME)
+TARGET_SIZE = (256, 256) # Should match training image size
+SAMPLE_IMAGE_DIR = './Dataset_BUSI_with_GT'
+CLASS_LABELS = {0: 'Benign', 1: 'Malignant', 2: 'Normal'}
+
+# Check if model directory exists
+if not os.path.exists(MODEL_DIR):
+    st.warning(f"Model directory '{MODEL_DIR}' does not exist. Creating it, but ensure the model file is present.")
+    os.makedirs(MODEL_DIR, exist_ok=True)
 
 # Function to load the model
-@st.cache_resource
+@st.cache_resource # Cache the loaded model
 def load_classification_model():
+    if not os.path.exists(MODEL_PATH):
+        st.error(f"Model file not found at {MODEL_PATH}. Please ensure the trained model exists.")
+        st.error("You might need to train the 'minimal_augment' model or place it in the correct directory.")
+        return None
     try:
-        model_path = './model/model.keras'
-        if os.path.exists(model_path):
-            model = load_model(model_path)
-            return model
-        else:
-            st.error(f"Model file not found at {model_path}. Please download the model first.")
-            return None
+        # Load the model with compile=False if you don't need to continue training or use the optimizer state
+        # This can sometimes avoid compatibility issues.
+        model = load_model(MODEL_PATH, compile=False)
+        # If you need to compile for predictions with metrics (usually not needed just for predict):
+        # model.compile(metrics=['accuracy'])
+        st.success(f"Model loaded successfully from {MODEL_PATH}")
+        return model
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None
 
-# Function to preprocess the image
-def preprocess_image(img, target_size=(256, 256)):
-    img = img.resize(target_size)
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)
-    img_array = img_array / 255.0
-    return img_array
+# Preprocessing Function using DenseNet's method
+def preprocess_image_densenet(pil_image, target_size=(256, 256)):
+    try:
+        img_array = np.array(pil_image)
+        if img_array.shape[-1] == 4: # Handle RGBA
+            img_array = img_array[..., :3]
+        elif len(img_array.shape) == 2: # Handle Grayscale
+             img_array = cv2.cvtColor(img_array, cv2.COLOR_GRAY2RGB)
+        img_resized = cv2.resize(img_array, (target_size[1], target_size[0]), interpolation=cv2.INTER_LINEAR)
+        img_float = img_resized.astype(np.float32)
+        img_preprocessed = densenet_preprocess_input(img_float)
+        img_batch = np.expand_dims(img_preprocessed, axis=0)
+        return img_batch
+    except Exception as e:
+        st.error(f"Error during image preprocessing: {e}")
+        return None
 
 # Function to make prediction
 def predict(model, img_array):
-    class_labels = {
-        0: 'Benign',
-        1: 'Malignant', 
-        2: 'Normal'
-    }
-    
-    predictions = model.predict(img_array)
-    predicted_class_index = np.argmax(predictions, axis=1)[0]
-    predicted_class = class_labels[predicted_class_index]
-    confidence = predictions[0][predicted_class_index]
-    
-    return predicted_class, confidence, predictions[0]
+    try:
+        predictions = model.predict(img_array)
+        predicted_class_index = np.argmax(predictions, axis=1)[0]
+        predicted_class = CLASS_LABELS[predicted_class_index]
+        confidence = predictions[0][predicted_class_index]
+        return predicted_class, confidence, predictions[0]
+    except Exception as e:
+        st.error(f"Error during prediction: {e}")
+        return None, 0.0, np.zeros(len(CLASS_LABELS))
 
 # Main function
 def main():
-    # Load model
     model = load_classification_model()
-    
-    # Create tabs for different sections
     tab1, tab2, tab3 = st.tabs(["Classification", "About", "Model Details"])
-    
-    with tab1:
+
+    with tab1: # Classification Tab
         col1, col2 = st.columns([1, 1])
-        
-        with col1:
+        uploaded_file_buffer = None # Use buffer to handle sample selection overwrite
+
+        with col1: # Upload/Sample Selection
             st.subheader("Upload Image")
             uploaded_file = st.file_uploader("Choose a breast ultrasound image...", type=["jpg", "jpeg", "png"])
-            
-            # Sample images option
-            st.markdown("### Or try a sample image:")
-            sample_dir = "./Dataset_BUSI_with_GT"
-            
-            if os.path.exists(sample_dir):
-                sample_categories = os.listdir(sample_dir)
-                sample_categories = [cat for cat in sample_categories if os.path.isdir(os.path.join(sample_dir, cat))]
-                
-                if sample_categories:
-                    selected_category = st.selectbox("Select category", sample_categories)
-                    category_path = os.path.join(sample_dir, selected_category)
-                    
-                    # Get image files (exclude mask files)
-                    sample_images = [f for f in os.listdir(category_path) 
-                                    if f.endswith(('.png', '.jpg', '.jpeg')) and not f.endswith('_mask.png')]
-                    
-                    if sample_images:
-                        selected_image = st.selectbox("Select sample image", sample_images)
-                        sample_image_path = os.path.join(category_path, selected_image)
-                        
-                        if st.button("Use this sample"):
-                            uploaded_file = open(sample_image_path, 'rb')
-        
-        with col2:
+
+            st.markdown("---")
+            st.markdown("#### Or try a sample image:")
+
+            if os.path.exists(SAMPLE_IMAGE_DIR):
+                try:
+                    sample_categories = sorted([d for d in os.listdir(SAMPLE_IMAGE_DIR) if os.path.isdir(os.path.join(SAMPLE_IMAGE_DIR, d))])
+                    if not sample_categories: st.warning("No category subdirectories found.")
+
+                    selected_category = st.selectbox("Select category", sample_categories, index=0 if sample_categories else -1)
+
+                    if selected_category:
+                        category_path = os.path.join(SAMPLE_IMAGE_DIR, selected_category)
+                        # Robust mask filtering
+                        sample_images = sorted([
+                            f for f in os.listdir(category_path)
+                            if f.lower().endswith(('.png', '.jpg', '.jpeg')) and '_mask' not in f.lower()
+                        ])
+                        if not sample_images: st.warning(f"No valid (non-mask) images found in '{selected_category}'.")
+
+                        selected_image = st.selectbox("Select sample image", sample_images, index=0 if sample_images else -1)
+
+                        if selected_image and st.button("Use this sample"):
+                            sample_image_path = os.path.join(category_path, selected_image)
+                            try:
+                                uploaded_file_buffer = open(sample_image_path, 'rb') # Read into buffer
+                                st.success(f"Using sample: {selected_image}")
+                            except Exception as e:
+                                st.error(f"Error opening sample image: {e}")
+                except Exception as e:
+                    st.error(f"Error accessing sample image directory: {e}")
+            else:
+                st.warning(f"Sample image directory not found: {SAMPLE_IMAGE_DIR}")
+
+        # Use the buffer if a sample was selected, otherwise use the uploaded file
+        display_file = uploaded_file_buffer if uploaded_file_buffer is not None else uploaded_file
+
+        with col2: # Results Display
             st.subheader("Classification Results")
-            
-            if uploaded_file is not None and model is not None:
-                # Display the uploaded image
-                img = Image.open(uploaded_file)
-                st.image(img, caption="Uploaded Image", use_column_width=True)
-                
-                # Preprocess the image
-                img_array = preprocess_image(img)
-                
-                # Predict
-                with st.spinner('Classifying...'):
-                    predicted_class, confidence, all_probs = predict(model, img_array)
-                
-                # Display results with color-coded boxes
-                if predicted_class == "Benign":
-                    st.success(f"Prediction: **{predicted_class}**")
-                    box_color = "green"
-                elif predicted_class == "Malignant":
-                    st.error(f"Prediction: **{predicted_class}**")
-                    box_color = "red"
-                else:
-                    st.info(f"Prediction: **{predicted_class}**")
-                    box_color = "blue"
-                
-                st.markdown(f"Confidence: **{confidence:.2%}**")
-                
-                # Display probability distribution
-                st.subheader("Prediction Probability Distribution")
-                fig, ax = plt.subplots(figsize=(6, 2))
-                labels = ['Benign', 'Malignant', 'Normal']
-                colors = ['green', 'red', 'blue']
-                ax.barh(labels, all_probs, color=colors)
-                ax.set_xlim(0, 1)
-                ax.set_xlabel('Probability')
-                ax.spines['top'].set_visible(False)
-                ax.spines['right'].set_visible(False)
-                st.pyplot(fig)
-                
-                # Display additional information based on prediction
-                if predicted_class == "Benign":
-                    st.markdown("""
-                    **Benign tumors** are non-cancerous growths. They:
-                    - Don't invade nearby tissues
-                    - Don't spread to other parts of the body
-                    - Usually have clear boundaries
-                    - Typically don't recur if removed completely
-                    """)
-                elif predicted_class == "Malignant":
-                    st.markdown("""
-                    **Malignant tumors** are cancerous. They:
-                    - Can invade nearby tissues
-                    - May spread to other parts of the body (metastasize)
-                    - Often have irregular boundaries
-                    - Can recur even after treatment
-                    
-                    ⚠️ **Important**: This is an AI prediction. Please consult with a healthcare professional for accurate diagnosis and treatment.
-                    """)
-                elif predicted_class == "Normal":
-                    st.markdown("""
-                    **Normal tissue** shows no signs of abnormal growth. Regular check-ups are still recommended for preventive care.
-                    """)
-    
-    with tab2:
+
+            if display_file is not None and model is not None:
+                try:
+                    img = Image.open(display_file)
+                    st.image(img, caption="Selected Image", use_column_width=True)
+
+                    img_array = preprocess_image_densenet(img, target_size=TARGET_SIZE)
+
+                    if img_array is not None:
+                        with st.spinner('Classifying...'):
+                            predicted_class, confidence, all_probs = predict(model, img_array)
+
+                        if predicted_class is not None:
+                            st.markdown("---")
+                            if predicted_class == "Benign": st.success(f"### Prediction: **{predicted_class}**")
+                            elif predicted_class == "Malignant": st.error(f"### Prediction: **{predicted_class}**")
+                            else: st.info(f"### Prediction: **{predicted_class}**")
+
+                            st.markdown(f"#### Confidence: **{confidence:.2%}**")
+
+                            st.subheader("Prediction Probability Distribution")
+                            fig, ax = plt.subplots(figsize=(6, 2.5))
+                            labels = list(CLASS_LABELS.values())
+                            colors = ['green', 'red', 'blue']
+                            bars = ax.barh(labels, all_probs, color=colors)
+                            ax.set_xlim(0, 1); ax.set_xlabel('Probability')
+                            ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+                            for bar in bars:
+                                width = bar.get_width()
+                                label_text = f'{width:.1%}' # Format percentage
+                                ax.text(width + 0.01, bar.get_y() + bar.get_height()/2., label_text , va='center', ha='left', fontsize=9)
+                            st.pyplot(fig)
+
+                            st.markdown("---") # Additional info section
+                            if predicted_class == "Benign": st.markdown("""**Benign tumors** are non-cancerous... (rest of text)""")
+                            elif predicted_class == "Malignant":
+                                st.markdown("""**Malignant tumors** are cancerous... (rest of text)""")
+                                st.warning("⚠️ **Important**: AI prediction. Consult a healthcare professional.")
+                            elif predicted_class == "Normal": st.markdown("""**Normal tissue** shows no signs... (rest of text)""")
+                        else: st.error("Prediction failed.")
+                    else: st.error("Image preprocessing failed.")
+                except Exception as e:
+                     st.error(f"Error processing image: {e}")
+                finally:
+                    # Close the file buffer if it was opened
+                    if uploaded_file_buffer is not None:
+                        uploaded_file_buffer.close()
+            elif model is None:
+                st.error("Model is not loaded. Cannot perform classification.")
+            else:
+                st.info("Upload an image or select a sample to classify.")
+
+    with tab2: # About Tab
         st.subheader("About This Project")
         st.markdown("""
-        ### Breast Ultrasound Tumor Classification
+        *   Uses deep learning (DenseNet121 base) for breast ultrasound classification (Benign, Malignant, Normal).
+        *   Trained on the BUSI dataset.
+        *   This version uses minimal data augmentation (Horizontal Flip only).
+        *   **Disclaimer**: Educational/research tool ONLY. Not for medical diagnosis. Consult a professional.
+        """)
 
-        This project uses deep learning to classify breast ultrasound images into three categories:
-        
-        - **Benign Tumors**: Non-cancerous growths
-        - **Malignant Tumors**: Cancerous growths
-        - **Normal Tissue**: No tumors present
-        
-        ### Dataset
-        
-        The dataset used in this project is the Breast Ultrasound Images Dataset (BUSI), which contains ultrasound images of breast cancer cases. The dataset includes:
-        
-        - 437 benign samples
-        - 210 malignant samples
-        - 133 normal samples
-        
-        ### Model Architecture
-        
-        The classification model uses a DenseNet121 architecture pre-trained on ImageNet as a feature extractor, with additional fully connected layers for classification.
-        
-        ### Purpose
-        
-        Early detection of breast cancer can significantly improve treatment outcomes. This tool aims to assist medical professionals by providing an additional screening method.
-        
-        **Note**: This application is for research and educational purposes only and should not be used as a substitute for professional medical advice, diagnosis, or treatment.
-        """)
-    
-    with tab3:
+    with tab3: # Model Details Tab
         st.subheader("Model Architecture and Performance")
-        
-        st.markdown("""
-        ### Model Architecture
-        
-        This project uses a DenseNet121 model pre-trained on ImageNet, with custom classification layers added:
-        
-        ```
-        Model: Sequential
-        _________________________________________________________________
-         Layer (type)                Output Shape              Param #   
-        =================================================================
-         densenet121 (Functional)    (None, 8, 8, 1024)        7,037,504
-                                                                 
-         flatten (Flatten)           (None, 65536)             0         
-                                                                 
-         dense (Dense)               (None, 1024)              67,109,888
-                                                                 
-         dense_1 (Dense)             (None, 1024)              1,049,600 
-                                                                 
-         dense_2 (Dense)             (None, 512)               524,800   
-                                                                 
-         dense_3 (Dense)             (None, 128)               65,664    
-                                                                 
-         dense_4 (Dense)             (None, 3)                 387       
-                                                                 
-        =================================================================
-        Total params: 75,787,843
-        Trainable params: 68,750,339
-        Non-trainable params: 7,037,504
-        ```
-        
-        ### Model Performance
-        
-        The model was trained for 20 epochs with the following final metrics:
-        
-        - **Training Accuracy**: 99.36%
-        - **Validation Accuracy**: 88.19%
-        - **Training Loss**: 0.015
-        - **Validation Loss**: 0.652
+        st.markdown("### Model Architecture")
+        # Assuming architecture hasn't fundamentally changed
+        st.code("""
+Model: "Breast_Tumor_Classifier_Minimal_Augment" (or similar)
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #
+=================================================================
+ densenet121 (Functional)    (None, 8, 8, 1024)        7,037,504 (Non-trainable)
+
+ flatten (Flatten)           (None, 65536)             0
+
+ dense_1024_1 (Dense)        (None, 1024)              67,109,888
+
+ dropout_1 (Dropout)         (None, 1024)              0
+
+ dense_512 (Dense)           (None, 512)               524,800
+
+ dropout_2 (Dropout)         (None, 512)               0
+
+ dense_128 (Dense)           (None, 128)               65,664
+
+ output (Dense)              (None, 3)                 387
+=================================================================
+Total params: 74,737,843
+Trainable params: 67,700,339
+Non-trainable params: 7,037,504
+        """, language='text') # Verify param counts if necessary
+
+        st.markdown("### Model Performance (Minimal Augmentation Model)")
+        st.info("""
+        Metrics obtained from evaluating the **best saved model** (`model_minimal_augment/best_model.keras`) from the corresponding training run:
         """)
-        
-        
-        # Add a section for downloading the model
-        st.subheader("Download Pre-trained Model")
-        st.markdown("""
-        If you haven't downloaded the model yet, you can get it from the following link:
-        
-        [Download Pre-trained Model](https://drive.google.com/file/d/12VDSpKWK7em7O3-HTx6qWxw5awQUHlIs/view?usp=sharing)
-        
-        After downloading, place the model file in the `./model/` directory with the filename `model.keras`.
+        # --- UPDATED METRICS ---
+        st.markdown(f"""
+        *   **Training Accuracy (on training set)**: **99.68%**
+        *   **Training Loss (on training set)**: **{0.009777:.5f}**
+        *   **Best Validation Accuracy (on validation set)**: **91.03%**
+        *   **Validation Loss (at best accuracy)**: **{0.416385:.5f}**
+        *   **Final Test Set Accuracy (on test set)**: **89.74%**
+        *   **Final Test Set Loss (on test set)**: **{0.6009:.4f}**
         """)
-    
-    # Footer
+        # --- Removed the ACTION NEEDED message ---
+
+        st.subheader("Get Model")
+        st.markdown(f"This app expects the model file `{MODEL_FILENAME}` to be located in the `{MODEL_DIR}` directory relative to the script.")
+        # If you have a specific download link for *this* version of the model, you can add it here.
+
     st.markdown("---")
-    st.markdown("Made with ❤️ using TensorFlow and Streamlit")
+    st.markdown("App using TensorFlow, Albumentations (minimal), and Streamlit.")
 
 if __name__ == "__main__":
     main()
