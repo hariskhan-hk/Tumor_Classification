@@ -38,8 +38,6 @@ Based on evaluation of the best model saved during training:
 -   **Test Accuracy**: **89.74%**
 -   **Test Loss**: 0.6009
 
-*(See the project report for detailed per-class metrics and confusion matrix).*
-
 ## Getting Started
 
 ### Prerequisites
