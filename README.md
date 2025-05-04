@@ -82,7 +82,7 @@ Based on evaluation of the best model saved during training:
     *(If `requirements.txt` is not provided, create one or install manually: `pip install tensorflow streamlit opencv-python-headless albumentations scikit-learn pandas numpy matplotlib seaborn huggingface-hub`)*
 
 4.  **Download the Pre-trained Model:**
-    The application expects the trained model file `best_model.keras` inside the `./model_minimal_augment/` directory.
+    The application expects the trained model file `model.keras` inside the `./model/` directory.
 
     *   **Option 1: Place Manually (Recommended if trained locally)**
         Ensure the `model.keras` is placed in the `./model/` directory.
@@ -114,11 +114,10 @@ Based on evaluation of the best model saved during training:
 ## Dataset
 
 The project uses the **Breast Ultrasound Images Dataset (BUSI)**.
-*(Reference: Al-Dhabyani W, Gomaa M, Khaled H, Fahmy A. Dataset of breast ultrasound images. Data in Brief. 2020 Feb;28:104863. DOI: 10.1016/j.dib.2019.104863)*
 
 -   Contains 780 original grayscale images after filtering masks.
 -   Distribution: Benign (437), Malignant (210), Normal (133).
--   Dataset available at sources like Kaggle ([Example Link](https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset)).
+-   Dataset available at sources like Kaggle ([Link](https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset)).
 
 ## Training Process (Minimal Augmentation Model)
 
