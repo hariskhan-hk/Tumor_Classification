@@ -5,7 +5,7 @@ from huggingface_hub import HfApi, upload_file
 
 # Option 1: Upload a single file
 upload_file(
-    path_or_fileobj="./model/model.keras",
+    path_or_fileobj="./model_minimal_augment/best_model.keras",
     path_in_repo="model.keras", # Path within the HF repo
     repo_id="chaoder/tumor-classifier", # Your repo name
     repo_type="model" 
