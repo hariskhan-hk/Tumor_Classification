@@ -56,8 +56,8 @@ Based on evaluation of the best model saved during training:
 
 1.  Clone this repository:
     ```bash
-    git clone https://github.com/[YourUsername]/[YourRepoName].git # <-- UPDATE THIS URL
-    cd [YourRepoName] # <-- UPDATE THIS DIRECTORY NAME
+    git clone https://github.com/hariskhan-hk/Tumor_Classification.git
+    cd Tumor_Classification
     ```
 
 2.  Create and activate a virtual environment (using `venv`):
@@ -77,30 +77,27 @@ Based on evaluation of the best model saved during training:
     # Ensure your virtual environment is activated before running pip
     pip install -r requirements.txt
     ```
-    *(If `requirements.txt` is not provided, create one or install manually: `pip install tensorflow streamlit opencv-python-headless albumentations scikit-learn pandas numpy matplotlib seaborn huggingface-hub`)*
 
 4.  **Download the Pre-trained Model:**
-    The application expects the trained model file `model.keras` inside the `./model/` directory.
+    The application expects the trained model at `./model_minimal_augment/best_model.keras`.
 
     *   **Option 1: Place Manually (Recommended if trained locally)**
-        Ensure the `model.keras` is placed in the `./model/` directory.
+        Copy your trained `best_model.keras` into the `./model_minimal_augment/` directory.
 
     *   **Option 2: Download from Hugging Face Hub (If Uploaded)**
         ```python
         # Example using huggingface-hub (install first: pip install huggingface-hub)
         from huggingface_hub import hf_hub_download
         import os
+        import shutil
 
-        MODEL_SAVE_DIR = './model'
-        MODEL_FILENAME = 'model.keras' # Make sure this matches the uploaded filename
-        REPO_ID = "chaoder/tumor-classifier" # Make sure this repo contains the *correct* model
+        REPO_ID = "chaoder/tumor-classifier"  # Make sure this repo contains the *correct* model
+        TARGET = "./model_minimal_augment/best_model.keras"  # The path app.py loads
 
-        os.makedirs(MODEL_SAVE_DIR, exist_ok=True)
-        hf_hub_download(repo_id=REPO_ID,
-                        filename=MODEL_FILENAME,
-                        local_dir=MODEL_SAVE_DIR,
-                        local_dir_use_symlinks=False)
-        print(f"Model downloaded to {os.path.join(MODEL_SAVE_DIR, MODEL_FILENAME)}")
+        downloaded = hf_hub_download(repo_id=REPO_ID, filename="model.keras")
+        os.makedirs(os.path.dirname(TARGET), exist_ok=True)
+        shutil.copy(downloaded, TARGET)
+        print(f"Model saved to {TARGET}")
         ```
 
 5.  Run the Streamlit app:
@@ -145,6 +142,10 @@ The final model described here was trained using:
 ## Disclaimer
 
 This application is intended solely for **educational and research purposes**. It is **not a medical device** and **must not be used as a substitute** for professional medical advice, diagnosis, or treatment. Clinical decisions should **only** be made by qualified healthcare professionals.
+
+## Authors
+
+This project was built by **Muhammad Haris Khan** ([@hariskhan-hk](https://github.com/hariskhan-hk)) and **Shoaib Ul Haq** ([@shoaibulhaque](https://github.com/shoaibulhaque)) for CS 436 Computer Vision. The full write-up is in [`Report_BreastTumorClassification.pdf`](Report_BreastTumorClassification.pdf).
 
 ## Acknowledgments
 
